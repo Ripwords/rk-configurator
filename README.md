@@ -5,8 +5,6 @@
 
 A modern, cross-platform desktop application for configuring Royal Kludge keyboards. Built with Tauri, Nuxt, and Rust.
 
-![Royal Kludge Configurator](screenshots/main.png)
-
 ## Features
 
 ### 🎨 Lighting Configuration
@@ -54,28 +52,20 @@ A modern, cross-platform desktop application for configuring Royal Kludge keyboa
 
 ### Main Screen
 
-![Main Screen](screenshots/main.png)
-_Keyboard selection and overview_
+<img width="789" height="842" alt="image" src="https://github.com/user-attachments/assets/7279cae8-a1fb-4cb5-944f-c791cae4f42d" />
 
 ### Lighting Configuration
 
-![Lighting Configuration](screenshots/lighting.png)
-_Configure lighting modes, colors, and effects_
-
-### Per-Key RGB Customization
-
-![Per-Key RGB](screenshots/per-key-rgb.png)
-_Customize individual key colors on RGB keyboards_
+<img width="752" height="630" alt="image" src="https://github.com/user-attachments/assets/db2d44db-60be-4afd-b6b9-fd6386ec43d3" />
 
 ### Key Mapping Editor
 
-![Key Mapping](screenshots/key-mapping.png)
-_Visually remap keys with interactive keyboard layout_
+<img width="776" height="813" alt="image" src="https://github.com/user-attachments/assets/4e7955c4-23a0-44d2-8f9d-a701f39ef30b" />
 
 ### Profile Management
 
-![Profiles](screenshots/profiles.png)
-_Create and manage multiple configuration profiles_
+<img width="720" height="513" alt="image" src="https://github.com/user-attachments/assets/5827b332-cf01-43a6-858b-4245510dafc1" />
+
 
 ## Installation
 
@@ -85,9 +75,7 @@ Download the latest release from the [Releases page](https://github.com/Ripwords
 
 ### Supported Platforms
 
-- **Windows**: `.exe` installer
 - **macOS**: `.app` bundle (Intel and Apple Silicon)
-- **Linux**: `.AppImage`
 
 ## Usage
 
@@ -108,9 +96,7 @@ Download the latest release from the [Releases page](https://github.com/Ripwords
 - [Node.js](https://nodejs.org/) (v18 or later)
 - [Bun](https://bun.sh/) (package manager)
 - Platform-specific dependencies:
-  - **Linux**: `libwebkit2gtk-4.1-dev`, `libappindicator3-dev`, `librsvg2-dev`, `patchelf`
   - **macOS**: Xcode Command Line Tools
-  - **Windows**: Microsoft Visual C++ Build Tools
 
 ### Setup
 
