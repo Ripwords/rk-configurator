@@ -14,6 +14,7 @@
     "sql:allow-select",
     "sql:allow-load",
     "sql:allow-close",
+    "process:default",
     "updater:default"
   ]
 }
