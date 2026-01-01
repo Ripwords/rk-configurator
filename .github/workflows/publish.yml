@@ -115,7 +115,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: release
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: pull latest from release branch
+        run: git pull origin release || true
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -134,6 +139,26 @@ jobs:
         id: get_version
         run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
 
+      - name: ensure CHANGELOG.md exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            echo "CHANGELOG.md not found. Generating it now..."
+            bunx changelogen@latest
+            if [ ! -f CHANGELOG.md ]; then
+              echo "Error: Failed to generate CHANGELOG.md"
+              echo "Current branch: $(git branch --show-current)"
+              echo "Latest commit: $(git log -1 --oneline)"
+              echo "Listing files in current directory:"
+              ls -la
+              exit 1
+            fi
+            echo "CHANGELOG.md generated successfully"
+          else
+            echo "CHANGELOG.md found"
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: sync changelog to GitHub release
         run: bunx changelogen@latest gh release
         env:
@@ -145,6 +170,55 @@ jobs:
           gh release edit "app-v${{ steps.get_version.outputs.version }}" \
             --draft=false \
             --latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sync-to-main:
+    needs: [prepare-release, sync-changelog]
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: detect default branch
+        id: default_branch
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+          DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
+          echo "branch=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
+          echo "Default branch: $DEFAULT_BRANCH"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: merge version bump to main branch
+        run: |
+          DEFAULT_BRANCH="${{ steps.default_branch.outputs.branch }}"
+          git fetch origin $DEFAULT_BRANCH release
+          git checkout $DEFAULT_BRANCH
+
+          # Check if release branch has commits not in default branch
+          if git merge-base --is-ancestor release $DEFAULT_BRANCH; then
+            echo "Release branch is already merged into $DEFAULT_BRANCH"
+            exit 0
+          fi
+
+          # Merge release branch into default branch
+          git merge release --no-edit -m "chore: sync version bump from release branch" || {
+            echo "Merge failed or no changes to merge"
+            exit 0
+          }
+
+          git push origin $DEFAULT_BRANCH || echo "Push failed or no changes to push"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
