@@ -31,6 +31,7 @@ const error = ref<string | null>(null);
 const saving = ref(false);
 const showResetConfirm = ref(false);
 const lightModes = ref<Array<{ label: string; value: number }>>([]);
+const activeTab = ref<string>("");
 
 const isCustomMode = computed(() => {
   if (!keyboard.value) return false;
@@ -57,6 +58,68 @@ const selectedProfileId = ref<string | undefined>(undefined);
 const showProfileModal = ref(false);
 const profileName = ref("");
 const editingProfileId = ref<string | null>(null);
+
+const tabItems = computed(() => {
+  const items: Array<{
+    label: string;
+    icon: string;
+    value: string;
+    slot: string;
+  }> = [];
+  if (keyboard.value?.light_enabled) {
+    items.push({
+      label: "Lighting",
+      icon: "i-lucide-palette",
+      value: "lighting",
+      slot: "lighting",
+    });
+  }
+  if (keyboard.value?.key_map_enabled) {
+    items.push({
+      label: "Key Mapping",
+      icon: "i-lucide-keyboard",
+      value: "keymapping",
+      slot: "keymapping",
+    });
+  }
+  return items;
+});
+
+const getProfileSummary = (profile: Profile) => {
+  const summary: string[] = [];
+  if (profile.config.light_mode) {
+    const lm = profile.config.light_mode;
+    const modeName =
+      lightModes.value.find((m) => m.value === lm.mode_bit)?.label ||
+      `Mode ${lm.mode_bit}`;
+    summary.push(`Lighting Mode: ${modeName}`);
+    summary.push(
+      `Brightness: ${lm.brightness}/5, Animation: ${lm.animation}/5, Sleep: ${lm.sleep}/5`
+    );
+    if (lm.color && !lm.random_colors) {
+      summary.push(`Color: RGB(${lm.color.r}, ${lm.color.g}, ${lm.color.b})`);
+    }
+    if (lm.random_colors) {
+      summary.push(`Random Colors: Enabled`);
+    }
+    if (lm.custom_colors && lm.custom_colors.length > 0) {
+      summary.push(`Custom Colors: ${lm.custom_colors.length} keys`);
+    }
+  } else {
+    summary.push(`Lighting: Not configured`);
+  }
+  if (profile.config.key_mapping?.mappings) {
+    const count = profile.config.key_mapping.mappings.length;
+    summary.push(
+      `Key Mappings: ${count} key${count !== 1 ? "s" : ""} remapped`
+    );
+  } else {
+    summary.push(`Key Mappings: None`);
+  }
+  return summary;
+};
+
+const expandedProfileId = ref<string | null>(null);
 
 const colorHex = computed({
   get: () => {
@@ -185,6 +248,12 @@ const loadKeyboard = async () => {
         selectedProfileId.value = defaultProfile.id;
         await selectProfile(defaultProfile.id);
       }
+    }
+
+    // Set initial active tab to first available tab
+    const firstTab = tabItems.value[0];
+    if (firstTab) {
+      activeTab.value = firstTab.value;
     }
   } catch (e) {
     error.value = e instanceof Error ? e.message : "Failed to load keyboard";
@@ -539,227 +608,220 @@ onMounted(() => {
     </UCard>
 
     <div v-else-if="keyboard" class="space-y-6">
-      <!-- Lighting Controls -->
-      <UCard v-if="keyboard.light_enabled">
-        <template #header>
-          <h2 class="text-xl font-semibold">Lighting Configuration</h2>
-        </template>
-
-        <div class="space-y-4 p-4">
-          <UFormField label="Brightness">
-            <USlider
-              v-model="lightConfig.brightness"
-              :min="0"
-              :max="5"
-              :step="1"
-            />
-            <div class="text-sm text-muted mt-1">
-              Value: {{ lightConfig.brightness }}
-            </div>
-          </UFormField>
-
-          <UFormField label="Animation Speed">
-            <USlider
-              v-model="lightConfig.animation"
-              :min="1"
-              :max="5"
-              :step="1"
-            />
-            <div class="text-sm text-muted mt-1">
-              Value: {{ lightConfig.animation }}
-            </div>
-          </UFormField>
-
-          <UFormField label="Sleep Time">
-            <USlider v-model="lightConfig.sleep" :min="1" :max="5" :step="1" />
-            <div class="text-sm text-muted mt-1">
-              Value: {{ lightConfig.sleep }}
-            </div>
-          </UFormField>
-
-          <UFormField label="Mode">
-            <USelect
-              v-model="lightConfig.mode_bit"
-              :items="lightModes"
-              value-key="value"
-              class="w-full min-w-[300px]"
-            />
-            <template v-if="isCustomMode" #description>
-              <p class="text-sm text-muted mt-1">
-                Custom mode selected - per-key colors can be configured
-              </p>
-            </template>
-          </UFormField>
-
-          <UFormField v-if="keyboard.rgb" label="Random Colors">
-            <USwitch v-model="lightConfig.random_colors" />
-          </UFormField>
-
-          <UFormField
-            v-if="keyboard.rgb && !lightConfig.random_colors && !isCustomMode"
-            label="Color"
-          >
-            <div class="flex items-center gap-4">
-              <input
-                v-model="colorHex"
-                type="color"
-                class="w-16 h-16 rounded border"
-              />
-              <div class="text-sm">
-                <div>R: {{ lightConfig.color?.r ?? 255 }}</div>
-                <div>G: {{ lightConfig.color?.g ?? 255 }}</div>
-                <div>B: {{ lightConfig.color?.b ?? 255 }}</div>
-              </div>
-            </div>
-          </UFormField>
-
-          <!-- Per-Key Color Editor (only in custom mode) -->
-          <div v-if="isCustomMode && keyboard.rgb" class="mt-6">
-            <PerKeyColorEditor :keyboard="keyboard" v-model="perKeyColors" />
-          </div>
-        </div>
-      </UCard>
-
-      <!-- Profile Management -->
-      <UCard>
-        <template #header>
-          <div class="flex items-center justify-between">
-            <h2 class="text-xl font-semibold">Profiles</h2>
-            <UButton
-              @click="openCreateProfileModal"
-              icon="i-lucide-plus"
-              size="sm"
-            >
-              New Profile
-            </UButton>
-          </div>
-        </template>
-        <div class="p-4 space-y-4">
-          <UFormField label="Select Profile">
-            <USelectMenu
-              v-model="selectedProfileId"
-              :items="
-                profiles.map((p) => ({
+      <!-- Profiles Section - Compact -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-medium text-muted">Profile:</span>
+        <UDropdownMenu
+          :items="
+            profiles.length > 0
+              ? profiles.map((p) => ({
                   label: p.name,
-                  value: p.id,
+                  slot: p.id,
+                  click: () => selectProfile(p.id),
                 }))
-              "
-              value-key="value"
-              placeholder="Select a profile or create a new one"
-              class="w-full"
-              @update:model-value="
-                (val) => {
-                  selectedProfileId = val as string | undefined;
-                  if (selectedProfileId) selectProfile(selectedProfileId);
-                }
-              "
-            />
-          </UFormField>
-
-          <div
-            v-if="selectedProfileId"
-            class="mb-4 p-3 bg-primary/10 border-2 border-primary rounded-lg"
-          >
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-file-edit" class="w-5 h-5 text-primary" />
-                <span class="font-semibold text-primary">
-                  Editing:
-                  {{
-                    profiles.find((p) => p.id === selectedProfileId)?.name ||
-                    "Unknown"
-                  }}
-                </span>
-              </div>
-            </div>
-            <p class="text-sm text-muted mb-3">
-              Make your changes below, then click "Save to Profile" to update
-              this profile
-            </p>
-            <UButton
-              @click="saveCurrentToSelectedProfile"
-              icon="i-lucide-save"
-              color="primary"
-              class="w-full"
-            >
-              Save to Selected Profile
-            </UButton>
-          </div>
-
-          <div v-if="profiles.length > 0" class="space-y-2">
-            <div
-              v-for="profile in profiles"
-              :key="profile.id"
-              :class="[
-                'flex items-center justify-between p-3 rounded-lg transition-all cursor-pointer',
-                selectedProfileId === profile.id
-                  ? 'bg-primary/20 border-2 border-primary ring-2 ring-primary/30'
-                  : 'bg-muted border-2 border-transparent hover:border-default/50',
-              ]"
-              @click="selectProfile(profile.id)"
-            >
-              <div class="flex items-center gap-3 flex-1">
-                <div
-                  v-if="selectedProfileId === profile.id"
-                  class="w-2 h-2 rounded-full bg-primary"
+              : []
+          "
+        >
+          <UButton
+            :label="
+              selectedProfileId
+                ? profiles.find((p) => p.id === selectedProfileId)?.name ||
+                  'Select profile'
+                : 'Select profile'
+            "
+            trailing-icon="i-lucide-chevron-down"
+            size="sm"
+            variant="outline"
+            class="min-w-[150px] justify-between"
+          />
+          <template #item="{ item }">
+            <div class="flex items-center justify-between w-full gap-4">
+              <span
+                :class="[
+                  'flex items-center gap-2',
+                  selectedProfileId === item.slot && 'font-semibold',
+                ]"
+              >
+                <UIcon
+                  v-if="selectedProfileId === item.slot"
+                  name="i-lucide-check"
+                  class="w-4 h-4"
                 />
-                <div v-else class="w-2 h-2 rounded-full bg-transparent" />
-                <div class="flex-1">
-                  <p class="font-medium flex items-center gap-2">
-                    {{ profile.name }}
-                    <UBadge
-                      v-if="selectedProfileId === profile.id"
-                      color="primary"
-                      variant="solid"
-                      size="xs"
-                    >
-                      Selected
-                    </UBadge>
-                  </p>
-                  <p v-if="profile.updated_at" class="text-xs text-muted">
-                    Updated:
-                    {{ new Date(profile.updated_at * 1000).toLocaleString() }}
-                  </p>
-                </div>
-              </div>
-              <div class="flex gap-2" @click.stop>
+                {{ item.label }}
+              </span>
+              <div class="flex gap-1">
                 <UButton
-                  @click="openEditProfileModal(profile)"
+                  @click.stop="
+                    openEditProfileModal(
+                      profiles.find((p) => p.id === item.slot)!
+                    )
+                  "
                   icon="i-lucide-edit"
                   size="xs"
                   variant="ghost"
-                  :title="'Rename profile'"
+                  :title="'Rename'"
                 />
                 <UButton
-                  @click="deleteProfileAction(profile.id)"
+                  @click.stop="deleteProfileAction(item.slot)"
                   icon="i-lucide-trash-2"
                   size="xs"
                   variant="ghost"
                   color="error"
-                  :title="'Delete profile'"
+                  :title="'Delete'"
                 />
               </div>
             </div>
-          </div>
-          <div v-else class="text-sm text-muted text-center py-4">
-            No profiles yet. Create one to save your current configuration.
-          </div>
-        </div>
-      </UCard>
+          </template>
+        </UDropdownMenu>
+        <UButton
+          v-if="selectedProfileId"
+          @click="saveCurrentToSelectedProfile"
+          icon="i-lucide-save"
+          size="sm"
+          variant="outline"
+          :title="'Save current settings to selected profile'"
+        >
+          Save
+        </UButton>
+        <UButton
+          @click="openCreateProfileModal"
+          icon="i-lucide-plus"
+          size="sm"
+          variant="ghost"
+          :title="'Create new profile'"
+        />
+      </div>
 
-      <!-- Key Mapping -->
-      <UCard v-if="keyboard.key_map_enabled">
-        <template #header>
-          <h2 class="text-xl font-semibold">Key Mapping</h2>
+      <!-- Tabs Navigation -->
+      <UTabs v-model="activeTab" :items="tabItems" class="w-full">
+        <template #lighting>
+          <UCard v-if="keyboard.light_enabled" class="mt-4">
+            <template #header>
+              <h2 class="text-xl font-semibold">Lighting Configuration</h2>
+            </template>
+
+            <div class="space-y-4 p-4">
+              <UFormField label="Brightness">
+                <USlider
+                  v-model="lightConfig.brightness"
+                  :min="0"
+                  :max="5"
+                  :step="1"
+                />
+                <div class="text-sm text-muted mt-1">
+                  Value: {{ lightConfig.brightness }}
+                </div>
+              </UFormField>
+
+              <UFormField label="Animation Speed">
+                <USlider
+                  v-model="lightConfig.animation"
+                  :min="1"
+                  :max="5"
+                  :step="1"
+                />
+                <div class="text-sm text-muted mt-1">
+                  Value: {{ lightConfig.animation }}
+                </div>
+              </UFormField>
+
+              <UFormField label="Sleep Time">
+                <USlider
+                  v-model="lightConfig.sleep"
+                  :min="1"
+                  :max="5"
+                  :step="1"
+                />
+                <div class="text-sm text-muted mt-1">
+                  Value: {{ lightConfig.sleep }}
+                </div>
+              </UFormField>
+
+              <UFormField label="Mode">
+                <USelect
+                  v-model="lightConfig.mode_bit"
+                  :items="lightModes"
+                  value-key="value"
+                  class="w-full min-w-[300px]"
+                />
+                <template v-if="isCustomMode" #description>
+                  <p class="text-sm text-muted mt-1">
+                    Custom mode selected - per-key colors can be configured
+                  </p>
+                </template>
+              </UFormField>
+
+              <UFormField v-if="keyboard.rgb" label="Random Colors">
+                <USwitch v-model="lightConfig.random_colors" />
+              </UFormField>
+
+              <UFormField
+                v-if="
+                  keyboard.rgb && !lightConfig.random_colors && !isCustomMode
+                "
+                label="Color"
+              >
+                <div class="flex items-center gap-4">
+                  <input
+                    v-model="colorHex"
+                    type="color"
+                    class="w-16 h-16 rounded border"
+                  />
+                  <div class="text-sm">
+                    <div>R: {{ lightConfig.color?.r ?? 255 }}</div>
+                    <div>G: {{ lightConfig.color?.g ?? 255 }}</div>
+                    <div>B: {{ lightConfig.color?.b ?? 255 }}</div>
+                  </div>
+                </div>
+              </UFormField>
+
+              <!-- Per-Key Color Editor (only in custom mode) -->
+              <div v-if="isCustomMode && keyboard.rgb" class="mt-6">
+                <PerKeyColorEditor
+                  :keyboard="keyboard"
+                  v-model="perKeyColors"
+                />
+              </div>
+            </div>
+          </UCard>
+          <UCard v-else class="mt-4">
+            <UAlert
+              color="info"
+              variant="soft"
+              title="Lighting Not Available"
+              description="This keyboard does not support lighting configuration."
+              icon="i-lucide-info"
+            />
+          </UCard>
         </template>
 
-        <div class="p-4">
-          <KeyMappingEditor :keyboard="keyboard" v-model="keyMappingConfig" />
-        </div>
-      </UCard>
+        <template #keymapping>
+          <UCard v-if="keyboard.key_map_enabled" class="mt-4">
+            <template #header>
+              <h2 class="text-xl font-semibold">Key Mapping</h2>
+            </template>
 
-      <!-- Actions -->
-      <div class="flex gap-4">
+            <div class="p-4">
+              <KeyMappingEditor
+                :keyboard="keyboard"
+                v-model="keyMappingConfig"
+              />
+            </div>
+          </UCard>
+          <UCard v-else class="mt-4">
+            <UAlert
+              color="info"
+              variant="soft"
+              title="Key Mapping Not Available"
+              description="This keyboard does not support key mapping configuration."
+              icon="i-lucide-info"
+            />
+          </UCard>
+        </template>
+      </UTabs>
+
+      <!-- Actions - Fixed at bottom -->
+      <div class="flex gap-4 pt-4 border-t">
         <UButton
           @click="saveConfiguration"
           :loading="saving"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Script to sync versions across package.json, Cargo.toml, and tauri.conf.json
+ * Script to sync versions across package.json, Cargo.toml, Cargo.lock, and tauri.conf.json
  * and optionally create a GitHub release
  *
  * Usage:
@@ -22,6 +22,7 @@ const PROJECT_ROOT = import.meta.dir + "/..";
 interface VersionFiles {
   packageJson: string;
   cargoToml: string;
+  cargoLock: string;
   tauriConf: string;
 }
 
@@ -30,6 +31,10 @@ function readVersionFiles(): VersionFiles {
     packageJson: readFileSync(join(PROJECT_ROOT, "package.json"), "utf-8"),
     cargoToml: readFileSync(
       join(PROJECT_ROOT, "src-tauri/Cargo.toml"),
+      "utf-8"
+    ),
+    cargoLock: readFileSync(
+      join(PROJECT_ROOT, "src-tauri/Cargo.lock"),
       "utf-8"
     ),
     tauriConf: readFileSync(
@@ -81,6 +86,22 @@ function updateCargoToml(version: string): void {
 
   writeFileSync(filePath, content);
   console.log(`✓ Updated Cargo.toml to version ${version}`);
+}
+
+function updateCargoLock(version: string): void {
+  const filePath = join(PROJECT_ROOT, "src-tauri/Cargo.lock");
+  let content = readFileSync(filePath, "utf-8");
+
+  // Update version for RoyalKludgeConfigurator package
+  // Match: [[package]] followed by name = "RoyalKludgeConfigurator" then version = "x.y.z"
+  // Use [\s\S]*? to match any whitespace including newlines
+  content = content.replace(
+    /(\[\[package\]\][\s\S]*?name = "RoyalKludgeConfigurator"[\s\S]*?version = ")[^"]+(")/,
+    `$1${version}$2`
+  );
+
+  writeFileSync(filePath, content);
+  console.log(`✓ Updated Cargo.lock to version ${version}`);
 }
 
 function updateTauriConf(version: string): void {
@@ -171,14 +192,23 @@ async function main() {
     const files = readVersionFiles();
     const pkgVersion = JSON.parse(files.packageJson).version;
     const cargoVersion = files.cargoToml.match(/^version = "(.*)"$/m)?.[1];
+    const cargoLockMatch = files.cargoLock.match(
+      /\[\[package\]\]\s+name = "RoyalKludgeConfigurator"\s+version = "(.*)"/
+    );
+    const cargoLockVersion = cargoLockMatch?.[1];
     const tauriVersion = JSON.parse(files.tauriConf).version;
 
     console.log("📋 Current versions:");
     console.log(`   package.json: ${pkgVersion}`);
     console.log(`   Cargo.toml: ${cargoVersion || "not found"}`);
+    console.log(`   Cargo.lock: ${cargoLockVersion || "not found"}`);
     console.log(`   tauri.conf.json: ${tauriVersion}`);
 
-    if (pkgVersion === cargoVersion && pkgVersion === tauriVersion) {
+    if (
+      pkgVersion === cargoVersion &&
+      pkgVersion === cargoLockVersion &&
+      pkgVersion === tauriVersion
+    ) {
       console.log("\n✓ All versions are already in sync!");
       if (!shouldCreateRelease) {
         return;
@@ -200,6 +230,12 @@ async function main() {
     );
   }
 
+  // Validate that we have a target version
+  if (!targetVersion) {
+    console.error("❌ No target version determined");
+    process.exit(1);
+  }
+
   // Validate version format
   if (!/^\d+\.\d+\.\d+$/.test(targetVersion)) {
     console.error(
@@ -213,6 +249,7 @@ async function main() {
   // Update all version files
   updatePackageJson(targetVersion);
   updateCargoToml(targetVersion);
+  updateCargoLock(targetVersion);
   updateTauriConf(targetVersion);
 
   console.log(`\n✓ All version files synced to ${targetVersion}`);
