@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.2.10
+
+[compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.8...v0.2.10)
+
+### 🐛 Bug Fixes
+
+- Update changelog tag prefix from "app-v" to "v" ([677dcb7](https://github.com/Ripwords/rk-configurator/commit/677dcb7))
+
+### 🔨 Chores
+
+- Bump version and update changelog ([3223206](https://github.com/Ripwords/rk-configurator/commit/3223206))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.2.9
 
 [compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.7...v0.2.9)
