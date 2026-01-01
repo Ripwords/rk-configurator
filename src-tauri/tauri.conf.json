@@ -56,7 +56,8 @@
       "keyboards/**/*"
     ],
     "macOS": {
-      "infoPlist": "Info.plist"
+      "infoPlist": "Info.plist",
+      "signingIdentity": "-"
     }
   }
 }
