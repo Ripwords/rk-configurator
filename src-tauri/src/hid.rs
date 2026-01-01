@@ -23,7 +23,13 @@ impl HidManager {
 
     /// Scan for connected keyboards
     pub fn scan_keyboards(&self) -> Result<Vec<Keyboard>, String> {
-        let api = self.api.lock().unwrap();
+        // Refresh HID API to detect newly connected devices
+        // We need to recreate the HidApi to get an updated device list
+        let mut api_guard = self.api.lock().unwrap();
+        *api_guard = HidApi::new()
+            .map_err(|e| format!("Failed to refresh HID API: {}", e))?;
+        let api = api_guard;
+        
         let resource_dir = get_resource_dir();
 
         let devices = api.device_list();

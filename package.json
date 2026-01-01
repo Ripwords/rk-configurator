@@ -1,7 +1,7 @@
 {
   "name": "rk-configurator",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "repository": {
     "type": "git",
@@ -19,7 +19,12 @@
     "changelog": "changelogen",
     "changelog:bump": "changelogen --bump",
     "changelog:release": "changelogen --release",
-    "changelog:gh": "changelogen gh release"
+    "changelog:gh": "changelogen gh release",
+    "release": "bun run scripts/release.ts",
+    "release:patch": "bun run scripts/release.ts --bump patch",
+    "release:minor": "bun run scripts/release.ts --bump minor",
+    "release:major": "bun run scripts/release.ts --bump major",
+    "release:create": "bun run scripts/release.ts --create-release"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.82",
