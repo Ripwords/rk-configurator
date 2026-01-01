@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.2.11
+
+[compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.9...v0.2.11)
+
+### 🚀 Features
+
+- Enhance macOS quit menu item with accelerator support ([a5c392e](https://github.com/Ripwords/rk-configurator/commit/a5c392e))
+
+### 🔨 Chores
+
+- Bump version and update changelog ([9e7c29c](https://github.com/Ripwords/rk-configurator/commit/9e7c29c))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.2.10
 
 [compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.8...v0.2.10)
