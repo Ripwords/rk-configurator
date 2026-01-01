@@ -5,70 +5,17 @@ on:
     branches:
       - release
 
-# This is the example from the readme.
-# On each push to the `release` branch it will create or update a GitHub release, build your app, and upload the artifacts to the release.
-
 jobs:
-  prepare-release:
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: install frontend dependencies
-        run: bun install
-
-      - name: configure git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: generate changelog and bump version
-        run: bunx changelogen@latest --bump
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: sync versions across all files
-        run: bun run scripts/release.ts --sync-only
-
-      - name: commit version bump and changelog
-        run: |
-          git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
-          [ -f CHANGELOG.md ] && git add CHANGELOG.md || true
-          git diff --staged --quiet && echo "No changes to commit" || git commit -m "chore: bump version and update changelog"
-          git push || exit 0
-
-      - name: get version from package.json
-        id: get_version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: output version
-        run: echo "Version bumped to ${{ steps.get_version.outputs.version }}"
-
   publish-tauri:
-    needs: prepare-release
     permissions:
       contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm based macs (M1 and above).
+          - platform: 'macos-latest'
             args: '--target aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel based macs.
+          - platform: 'macos-latest'
             args: '--target x86_64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
@@ -88,11 +35,10 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Those targets are only used on macos runners.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install frontend dependencies
-        run: bun install # change this to npm, pnpm or bun depending on which one you use.
+        run: bun install
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -100,80 +46,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          tagName: app-v__VERSION__
           releaseName: 'rk-configurator v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
 
-  sync-changelog:
-    needs: [prepare-release, publish-tauri]
-    permissions:
-      contents: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: release
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: pull latest from release branch
-        run: git pull origin release || true
-
-      - name: setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-
-      - name: install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: install frontend dependencies
-        run: bun install
-
-      - name: get version from package.json
-        id: get_version
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
-
-      - name: ensure CHANGELOG.md exists
-        run: |
-          if [ ! -f CHANGELOG.md ]; then
-            echo "CHANGELOG.md not found. Generating it now..."
-            bunx changelogen@latest
-            if [ ! -f CHANGELOG.md ]; then
-              echo "Error: Failed to generate CHANGELOG.md"
-              echo "Current branch: $(git branch --show-current)"
-              echo "Latest commit: $(git log -1 --oneline)"
-              echo "Listing files in current directory:"
-              ls -la
-              exit 1
-            fi
-            echo "CHANGELOG.md generated successfully"
-          else
-            echo "CHANGELOG.md found"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: sync changelog to GitHub release
-        run: bunx changelogen@latest gh release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: publish release (mark as latest)
-        run: |
-          gh release edit "app-v${{ steps.get_version.outputs.version }}" \
-            --draft=false \
-            --latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   sync-to-main:
-    needs: [prepare-release, sync-changelog]
+    needs: publish-tauri
     permissions:
       contents: write
     runs-on: ubuntu-latest
@@ -198,7 +79,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: merge version bump to main branch
+      - name: merge release branch to main
         run: |
           DEFAULT_BRANCH="${{ steps.default_branch.outputs.branch }}"
           git fetch origin $DEFAULT_BRANCH release
@@ -211,7 +92,7 @@ jobs:
           fi
 
           # Merge release branch into default branch
-          git merge release --no-edit -m "chore: sync version bump from release branch" || {
+          git merge release --no-edit -m "chore: sync from release branch" || {
             echo "Merge failed or no changes to merge"
             exit 0
           }
@@ -219,4 +100,3 @@ jobs:
           git push origin $DEFAULT_BRANCH || echo "Push failed or no changes to push"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
