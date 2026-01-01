@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.2.12
+
+[compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.10...v0.2.12)
+
+### ♻️ Code Refactoring
+
+- Simplify database initialization and enhance profile deletion flow ([187a126](https://github.com/Ripwords/rk-configurator/commit/187a126))
+
+### 🔨 Chores
+
+- Bump version and update changelog ([3a375c1](https://github.com/Ripwords/rk-configurator/commit/3a375c1))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.2.11
 
 [compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.9...v0.2.11)

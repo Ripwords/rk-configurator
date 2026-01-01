@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "RoyalKludgeConfigurator"
-version = "0.2.11"
+version = "0.2.12"
 dependencies = [
  "fix-path-env",
  "hidapi",
