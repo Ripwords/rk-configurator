@@ -1,6 +1,19 @@
 # Changelog
 
 
+## v0.2.6
+
+[compare changes](https://github.com/Ripwords/rk-configurator/compare/v0.2.4...v0.2.6)
+
+### 🔨 Chores
+
+- Bump version and update changelog ([a975153](https://github.com/Ripwords/rk-configurator/commit/a975153))
+- Remove generate-latest-json script and update publish workflow ([d712b17](https://github.com/Ripwords/rk-configurator/commit/d712b17))
+
+### ❤️ Contributors
+
+- JJ <teohjjteoh@gmail.com>
+
 ## v0.2.5
 
 [compare changes](https://github.com/Ripwords/rk-configurator/compare/app-v0.2.3...v0.2.5)
