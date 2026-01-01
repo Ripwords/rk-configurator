@@ -15,7 +15,6 @@
     "build": "tauri build",
     "typecheck": "nuxt typecheck",
     "signer": "bunx tauri signer generate -w ~/.tauri/rk-configurator.key",
-    "generate-latest-json": "node scripts/generate-latest-json.js",
     "changelog": "bunx changelogen@latest",
     "changelog:bump": "bunx changelogen@latest --bump",
     "changelog:release": "bunx changelogen@latest --release",
