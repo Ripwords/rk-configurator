@@ -166,7 +166,6 @@ jobs:
 
       - name: publish release (mark as latest)
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
           gh release edit "app-v${{ steps.get_version.outputs.version }}" \
             --draft=false \
             --latest
@@ -193,7 +192,6 @@ jobs:
       - name: detect default branch
         id: default_branch
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
           DEFAULT_BRANCH=$(gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name')
           echo "branch=$DEFAULT_BRANCH" >> $GITHUB_OUTPUT
           echo "Default branch: $DEFAULT_BRANCH"
